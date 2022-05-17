@@ -5,6 +5,8 @@ import com.chandler.demo.repository.entities.Person;
 import com.chandler.demo.service.PersonService;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
@@ -22,9 +24,11 @@ public class PersonServiceTest {
         Person expectedPerson = new Person();
         expectedPerson.setFirstName("John");
         expectedPerson.setLastName("Doe");
+        List<Person> expectedPersonList = new ArrayList<>();
+        expectedPersonList.add(expectedPerson);
         when(mockedPersonRepository
                 .findByFirstNameEqualsIgnoreCaseAndLastNameEqualsIgnoreCase("John", "Doe"))
-                .thenReturn(expectedPerson);
+                .thenReturn(expectedPersonList);
 
         // Act
         Person actualPerson = personService.getPersonByFullName("John", "Doe");
@@ -43,10 +47,11 @@ public class PersonServiceTest {
         Person person = new Person();
         person.setFirstName("John");
         person.setLastName("Doe");
+        List<Person> emptyList = new ArrayList<>();
 
         when(mockedPersonRepository
-                .existsByFirstNameIgnoreCaseAndLastNameIgnoreCase("John", "Doe"))
-                .thenReturn(false);
+                .findByFirstNameEqualsIgnoreCaseAndLastNameEqualsIgnoreCase("John", "Doe"))
+                .thenReturn(emptyList);
         when(mockedPersonRepository
                 .saveAndFlush(any(Person.class))).thenReturn(person);
 

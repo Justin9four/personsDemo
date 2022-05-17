@@ -32,7 +32,11 @@ public class PersonsController {
 
     @Bean
     public ModelMapper modelMapper() {
-        return new ModelMapper();
+        ModelMapper mapper = new ModelMapper();
+        mapper.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setDeepCopyEnabled(true);
+        return mapper;
     }
 
     @GetMapping(value = "/{firstName}/{lastName}", produces = "application/json")

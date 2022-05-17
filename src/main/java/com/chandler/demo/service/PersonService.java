@@ -3,15 +3,19 @@ package com.chandler.demo.service;
 import com.chandler.demo.exception.DataConflictException;
 import com.chandler.demo.repository.PersonRepository;
 import com.chandler.demo.repository.entities.Person;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.List;
 
 @Service
 public class PersonService {
-    @Autowired
     PersonRepository personRepository;
+
+    @Autowired
+    ModelMapper modelMapper;
 
     public PersonService(PersonRepository personRepository) {
         this.personRepository = personRepository;
@@ -20,11 +24,11 @@ public class PersonService {
     private final String uniqueFullNameFormattedMessage = "full name must be unique and %s %s has already been taken";
 
     public Person getPersonByFullName(String firstName, String lastName) {
-        Person person = personRepository.findByFirstNameEqualsIgnoreCaseAndLastNameEqualsIgnoreCase(firstName, lastName);
-        if (person == null) {
+        List<Person> person = personRepository.findByFirstNameEqualsIgnoreCaseAndLastNameEqualsIgnoreCase(firstName, lastName);
+        if (person.isEmpty()) {
             throw new EntityNotFoundException();
         }
-        return person;
+        return person.get(0);
     }
 
     public Person getPersonById(Long id) {
@@ -33,17 +37,17 @@ public class PersonService {
 
     public void updatePersonById(Person updateData) throws DataConflictException {
         // Business Rule: First + last names must be unique
-        if (updateData.getFirstName() != null &&
-                updateData.getLastName() != null &&
-                personRepository.existsByFirstNameIgnoreCaseAndLastNameIgnoreCase(updateData.getFirstName(), updateData.getLastName())) {
+        // Must update an existing record
+        Person personDataFromDb = personRepository.findById(updateData.getId()).orElseThrow(EntityNotFoundException::new);
+        modelMapper.map(updateData, personDataFromDb);
+        boolean isNotUniqueByFullName = personRepository
+                .existsByFirstNameIgnoreCaseAndLastNameIgnoreCase(personDataFromDb.getFirstName(), personDataFromDb.getLastName());
+        if (isNotUniqueByFullName) {
             throw new DataConflictException(
                     String.format(uniqueFullNameFormattedMessage, updateData.getFirstName(), updateData.getLastName())
             );
         }
-        // Must update an existing record
-        Person personDataFromDb = personRepository.findById(updateData.getId()).orElseThrow(EntityNotFoundException::new);
-        Person mergedUpdateData = mergePersons(personDataFromDb, updateData);
-        personRepository.saveAndFlush(mergedUpdateData);
+        personRepository.saveAndFlush(personDataFromDb);
     }
 
     public void removePersonById(Long id) {
@@ -52,32 +56,18 @@ public class PersonService {
 
     public void createPerson(Person person) throws DataConflictException {
         // Business Rule: First + last names must be unique
-        if (person.getFirstName() != null &&
-                person.getLastName() != null &&
-                personRepository.existsByFirstNameIgnoreCaseAndLastNameIgnoreCase(person.getFirstName(), person.getLastName())) {
+
+        // Must save first to protect against race conditions
+        Person savedPerson = personRepository.saveAndFlush(person);
+        // Database should have constraints to catch duplication but for redundancy check in business logic
+        boolean isNotUniqueByFullName = personRepository
+                .findByFirstNameEqualsIgnoreCaseAndLastNameEqualsIgnoreCase(person.getFirstName(), person.getLastName())
+                .size() > 1;
+        if (isNotUniqueByFullName) {
+            personRepository.deleteById(savedPerson.getId());
             throw new DataConflictException(
                     String.format(uniqueFullNameFormattedMessage, person.getFirstName(), person.getLastName())
             );
         }
-        personRepository.saveAndFlush(person);
-    }
-
-    private Person mergePersons(Person oldPerson, Person newData) {
-        // overwrite old person values
-        if (newData.getFirstName() != null) oldPerson.setFirstName(newData.getFirstName());
-        if (newData.getLastName() != null) oldPerson.setLastName(newData.getLastName());
-        if (newData.getAddress() != null) {
-            if (newData.getAddress().getStreet() != null)
-                oldPerson.getAddress().setStreet(newData.getAddress().getStreet());
-            if (newData.getAddress().getCity() != null)
-                oldPerson.getAddress().setCity(newData.getAddress().getCity());
-            if (newData.getAddress().getState() != null)
-                oldPerson.getAddress().setState(newData.getAddress().getState());
-            if (newData.getAddress().getZipCode() != null)
-                oldPerson.getAddress().setZipCode(newData.getAddress().getZipCode());
-            if (newData.getAddress().getCountry() != null)
-                oldPerson.getAddress().setCountry(newData.getAddress().getCountry());
-        }
-        return oldPerson;
     }
 }

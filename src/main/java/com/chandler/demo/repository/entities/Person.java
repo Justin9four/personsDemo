@@ -20,6 +20,23 @@ public class Person {
     @JoinColumn(name = "addressId", referencedColumnName = "id", nullable = false)
     private Address address;
 
+    public Person() {
+    }
+
+    public Person(Person person) {
+        setId(person.getId());
+        setFirstName(person.getFirstName());
+        setLastName(person.getLastName());
+        Address address = new Address();
+        address.setId(person.getAddress().getId());
+        address.setStreet(person.getAddress().getStreet());
+        address.setCity(person.getAddress().getCity());
+        address.setState(person.getAddress().getState());
+        address.setCountry(person.getAddress().getCountry());
+        address.setZipCode(person.getAddress().getZipCode());
+        setAddress(address);
+    }
+
     public Long getId() {
         return id;
     }
