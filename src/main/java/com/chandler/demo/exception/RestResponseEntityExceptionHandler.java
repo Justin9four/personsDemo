@@ -2,6 +2,7 @@ package com.chandler.demo.exception;
 
 import com.chandler.demo.controller.dtos.DataConflictErrorDto;
 import com.chandler.demo.controller.dtos.ValidationErrorDto;
+import org.postgresql.util.PSQLException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -23,7 +24,12 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
     }
 
     @ExceptionHandler({DataConflictException.class})
-    public ResponseEntity<DataConflictErrorDto> handleValidation(DataConflictException ex) {
+    public ResponseEntity<DataConflictErrorDto> handleDataConflict(DataConflictException ex) {
         return new ResponseEntity<>(ex.getDataConflictErrorDto(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler({PSQLException.class})
+    public ResponseEntity<DataConflictErrorDto> handleDataConflict(PSQLException ex) {
+        return new ResponseEntity<>(new DataConflictErrorDto(ex.getMessage()), HttpStatus.CONFLICT);
     }
 }
